@@ -24,7 +24,6 @@ def h_captcha():
 		return solver.solve_and_return_solution()
 
 
-
 app = Flask(__name__)
 
 
@@ -125,4 +124,6 @@ def get_json():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+    # /api?cpf=012.392.742-03&data_nascimento=03/01/1992&ano=2020
 
