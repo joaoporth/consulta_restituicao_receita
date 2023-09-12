@@ -1,163 +1,128 @@
-import os
-import zipfile
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.by import By
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.service import Service as ChromeService
-import time
-import base64
+import sys, os
+sys.path.insert(1, './')
 
-PROXY_HOST = 'brd.superproxy.io'
-PROXY_PORT = 22225
-PROXY_USER = 'brd-customer-hl_235c1236-zone-zone1'
-PROXY_PASS = 'j7x4cyc91m97' # password
+import re
+import requests
+from anticaptchaofficial.hcaptchaproxyless import hCaptchaProxyless
+
+from flask import Flask, jsonify, request
 
 
-manifest_json = """
-{
-    "version": "1.0.0",
-    "manifest_version": 2,
-    "name": "Chrome Proxy",
-    "permissions": [
-        "proxy",
-        "tabs",
-        "unlimitedStorage",
-        "storage",
-        "<all_urls>",
-        "webRequest",
-        "webRequestBlocking"
-    ],
-    "background": {
-        "scripts": ["background.js"]
-    },
-    "minimum_chrome_version":"22.0.0"
-}
-"""
+def clean(text) -> str:
+    return str(re.sub(r'[^\w\s]', '', str(text))).replace(' ','').strip()
 
-background_js = """
-var config = {
-        mode: "fixed_servers",
-        rules: {
-        singleProxy: {
-            scheme: "https",
-            host: "%s",
-            port: parseInt(%s)
-        },
-        bypassList: ["localhost"]
-        }
-    };
-
-chrome.proxy.settings.set({value: config, scope: "regular"}, function() {});
-
-function callbackFn(details) {
-    return {
-        authCredentials: {
-            username: "%s",
-            password: "%s"
-        }
-    };
-}
-
-chrome.webRequest.onAuthRequired.addListener(
-            callbackFn,
-            {urls: ["<all_urls>"]},
-            ['blocking']
-);
-""" % (PROXY_HOST, PROXY_PORT, PROXY_USER, PROXY_PASS)
+API_KEY = ''
 
 
-def get_chromedriver(use_proxy=False, user_agent=None):
-    path = os.path.dirname(os.path.abspath(__file__))
-    chrome_options = webdriver.ChromeOptions()
-    if use_proxy:
-        pluginfile = 'proxy_auth_plugin.zip'
+def h_captcha():
 
-        with zipfile.ZipFile(pluginfile, 'w') as zp:
-            zp.writestr("manifest.json", manifest_json)
-            zp.writestr("background.js", background_js)
-        chrome_options.add_extension(pluginfile)
-        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+		solver = hCaptchaProxyless()
+		solver.set_key(API_KEY)
+		solver.set_website_url('https://www.restituicao.receita.fazenda.gov.br/')
+		solver.set_website_key('1e7b8462-5e38-4418-9998-74210d909134')
 
-    if user_agent:
-        chrome_options.add_argument('--user-agent=%s' % user_agent)
-    driver = webdriver.Chrome(
-        os.path.join(path, 'chromedriver'),
-        service=ChromeService(ChromeDriverManager().install()),
-        chrome_options=chrome_options)
-
-    return driver
+		return solver.solve_and_return_solution()
 
 
-def api_consulta(cpf:str, data_nascimento:str, ano:int) -> None:
 
-    data_nascimento = ''.join(data_nascimento.split('/')[::-1])
-
-    driver = get_chromedriver(use_proxy=True)
-    #driver.get('https://www.google.com/search?q=my+ip+address')
-    driver.get('https://lumtest.com/myip.json')
-    #driver.get('https://www.restituicao.receita.fazenda.gov.br/#/')
-    #print(driver.find_element(By.TAG_NAME, "body").text)
-
-    #input('[+]')
-
-    wait = WebDriverWait(driver, 30)
-
-    try:
-
-        element = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'flt-glass-pane')))
+app = Flask(__name__)
 
 
-        element.click()
 
-    except Exception as e:
-        print(f"Ocorreu um erro: {e}")
+class ApiConsulta():
+    def __init__(self, cpf:str, data_nascimento:str, ano:str) -> None:
+        self.status = False
+        self.message = None
 
-    for i in range(4):
-        driver.find_element(By.TAG_NAME ,'body').send_keys(Keys.TAB)
-        time.sleep(1)
+        data_nascimento = ''.join(data_nascimento.split('/')[::-1])
+        cpf = clean(cpf)
 
-    driver.find_element(By.TAG_NAME ,'body').send_keys(cpf)
-    time.sleep(1)
+        session = requests.Session()
 
-    driver.find_element(By.TAG_NAME ,'body').send_keys(Keys.TAB)
-    driver.find_element(By.TAG_NAME ,'body').send_keys(data_nascimento)
+        cap = h_captcha()
 
-    driver.find_element(By.TAG_NAME ,'body').send_keys(Keys.TAB)
-    time.sleep(1)
+        #print(cap)
 
-    driver.find_element(By.TAG_NAME ,'body').send_keys(Keys.TAB)
-    time.sleep(1)
+        if cap != 0:
 
-    driver.find_element(By.TAG_NAME ,'body').send_keys(Keys.SPACE)
-    time.sleep(1)
+            headers = {
+                'Accept': '*/*',
+                'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+                'Pragma': 'no-cache',
+                'Referer': 'https://www.restituicao.receita.fazenda.gov.br/',
+                'Sec-Fetch-Dest': 'empty',
+                'Sec-Fetch-Mode': 'cors',
+                'Sec-Fetch-Site': 'same-origin',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36 Edg/116.0.1938.76',
+                'X-Firebase-AppCheck': '',
+                'aplicativo': 'RESTITUICAO',
+                'h-captcha-response': cap,
+                'origem': 'web',
+                'sec-ch-ua': '"Chromium";v="116", "Not)A;Brand";v="24", "Microsoft Edge";v="116"',
+                'sec-ch-ua-mobile': '?0',
+                'sec-ch-ua-platform': '"Windows"',
+                'servico': 'consultar_restituicao',
+                'so': 'WE',
+                'token': '',
+                'token_esuite': '',
+                'token_fcm': '',
+                'versao_app': '1.0',
+            }
 
-    currentYear = int(time.strftime('%Y'))
-    downs = currentYear - ano
+            response = session.get(
+                f'https://www.restituicao.receita.fazenda.gov.br/servicos-rfb-apprfb-restituicao/apprfb-restituicao/consulta-restituicao/{cpf}/{ano}/{data_nascimento}',
+                headers=headers,
+            )
 
-    for _ in range(downs + 1):
-        driver.find_element(By.TAG_NAME ,'body').send_keys(Keys.ARROW_DOWN)
-        time.sleep(1)
+            #print(response.text)
 
-    driver.find_element(By.TAG_NAME ,'body').send_keys(Keys.SPACE)
-    time.sleep(1)
+            if response.text in ['hCaptcha expirado ou inválido.', 'Prezado usuário, o seu acesso foi bloqueado por possuir atributos que o caracteriza como um acesso automatizado. Favor tentar novamente']:
+                self.message = response.text.strip()
+                return
 
-    captcha_element = driver.find_element(By.CSS_SELECTOR,'.h-captcha')
-    captcha_element.click()
+            try:
+                self.message = response.json()
+                self.status = True
 
-    for _ in range(6):
-        driver.find_element(By.TAG_NAME ,'body').send_keys(Keys.TAB)
 
-    driver.find_element(By.TAG_NAME ,'body').send_keys(Keys.SPACE)
-    time.sleep(10)
+            except:
+                self.message = response.text.strip()
 
-    driver.get_screenshot_as_file(f"{cpf}_{ano}.jpg")
+        else:
+            self.message = 'Captcha unsolved'
 
-    driver.quit()
+def consulta(cpf:str, data_nascimento:str, ano:str) -> dict:
 
+    get = ApiConsulta(cpf, data_nascimento, ano)
+
+    data = {
+        'status': get.status,
+        'message': get.message,
+    }
+
+    return data
+
+
+
+# Rota que retorna um JSON simples
+@app.route('/api', methods=['GET'])
+def get_json():
+
+    cpf = request.args.get('cpf')
+    data_nascimento = request.args.get('data_nascimento')
+    ano = request.args.get('ano')
+
+    print()
+    print('[+] consultando',cpf, data_nascimento, ano)
+
+    response = consulta(cpf, data_nascimento, ano)
+
+    print(response)
+
+    return jsonify(response)
 
 if __name__ == '__main__':
+    app.run(debug=True)
 
-    api_consulta('10186358903', '01/05/2001', 2022)
