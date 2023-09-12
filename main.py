@@ -10,10 +10,10 @@ from selenium.webdriver.chrome.service import Service as ChromeService
 import time
 import base64
 
-PROXY_HOST = 'zproxy.lum-superproxy.io'
+PROXY_HOST = 'brd.superproxy.io'
 PROXY_PORT = 22225
-PROXY_USER = 'brd-customer-hl_c4113741-zone-data_center-country-br'
-PROXY_PASS = 'nwlgbfb867og' # password
+PROXY_USER = 'brd-customer-hl_235c1236-zone-zone1'
+PROXY_PASS = 'j7x4cyc91m97' # password
 
 
 manifest_json = """
@@ -79,6 +79,8 @@ def get_chromedriver(use_proxy=False, user_agent=None):
             zp.writestr("manifest.json", manifest_json)
             zp.writestr("background.js", background_js)
         chrome_options.add_extension(pluginfile)
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+
     if user_agent:
         chrome_options.add_argument('--user-agent=%s' % user_agent)
     driver = webdriver.Chrome(
@@ -88,14 +90,20 @@ def get_chromedriver(use_proxy=False, user_agent=None):
 
     return driver
 
-def main():
+
+def api_consulta(cpf:str, data_nascimento:str, ano:int) -> None:
+
+    data_nascimento = ''.join(data_nascimento.split('/')[::-1])
+
     driver = get_chromedriver(use_proxy=True)
     #driver.get('https://www.google.com/search?q=my+ip+address')
-    #driver.get('http://www.httpbin.org/ip')
+    #driver.get('https://lumtest.com/myip.json')
     driver.get('https://www.restituicao.receita.fazenda.gov.br/#/')
     #print(driver.find_element(By.TAG_NAME, "body").text)
 
-    wait = WebDriverWait(driver, 10)
+    #input('[+]')
+
+    wait = WebDriverWait(driver, 30)
 
     try:
 
@@ -111,14 +119,11 @@ def main():
         driver.find_element(By.TAG_NAME ,'body').send_keys(Keys.TAB)
         time.sleep(1)
 
-    cpf = ''
     driver.find_element(By.TAG_NAME ,'body').send_keys(cpf)
     time.sleep(1)
 
     driver.find_element(By.TAG_NAME ,'body').send_keys(Keys.TAB)
-
-    dataNascimento = ''
-    driver.find_element(By.TAG_NAME ,'body').send_keys(dataNascimento)
+    driver.find_element(By.TAG_NAME ,'body').send_keys(data_nascimento)
 
     driver.find_element(By.TAG_NAME ,'body').send_keys(Keys.TAB)
     time.sleep(1)
@@ -130,8 +135,7 @@ def main():
     time.sleep(1)
 
     currentYear = int(time.strftime('%Y'))
-    year = 2022
-    downs = currentYear - year
+    downs = currentYear - ano
 
     for _ in range(downs + 1):
         driver.find_element(By.TAG_NAME ,'body').send_keys(Keys.ARROW_DOWN)
@@ -149,12 +153,11 @@ def main():
     driver.find_element(By.TAG_NAME ,'body').send_keys(Keys.SPACE)
     time.sleep(10)
 
-    screenshot = driver.get_screenshot_as_base64()
+    driver.get_screenshot_as_png(f"{cpf}_{ano}.jpg")
 
     driver.quit()
 
-    with open('screenshot.png', 'wb') as file:
-        file.write(base64.b64decode(screenshot))
 
 if __name__ == '__main__':
-    main()
+
+    api_consulta('10186358903', '01/05/2001', 2022)
