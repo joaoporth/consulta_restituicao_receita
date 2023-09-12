@@ -97,8 +97,8 @@ def api_consulta(cpf:str, data_nascimento:str, ano:int) -> None:
 
     driver = get_chromedriver(use_proxy=True)
     #driver.get('https://www.google.com/search?q=my+ip+address')
-    #driver.get('https://lumtest.com/myip.json')
-    driver.get('https://www.restituicao.receita.fazenda.gov.br/#/')
+    driver.get('https://lumtest.com/myip.json')
+    #driver.get('https://www.restituicao.receita.fazenda.gov.br/#/')
     #print(driver.find_element(By.TAG_NAME, "body").text)
 
     #input('[+]')
@@ -153,7 +153,7 @@ def api_consulta(cpf:str, data_nascimento:str, ano:int) -> None:
     driver.find_element(By.TAG_NAME ,'body').send_keys(Keys.SPACE)
     time.sleep(10)
 
-    driver.get_screenshot_as_png(f"{cpf}_{ano}.jpg")
+    driver.get_screenshot_as_file(f"{cpf}_{ano}.jpg")
 
     driver.quit()
 
