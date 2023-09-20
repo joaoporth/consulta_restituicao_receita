@@ -128,7 +128,7 @@ def certificado_sem_saldo(cpf, nome, ano):
 def h_captcha():
 
 		solver = hCaptchaProxyless()
-		solver.set_key(API_KEY)
+		solver.set_key('2936035ef7ebd0f88a38bcba3ab1911d')
 		solver.set_website_url('https://www.restituicao.receita.fazenda.gov.br/')
 		solver.set_website_key('1e7b8462-5e38-4418-9998-74210d909134')
 
