@@ -80,7 +80,7 @@ time.sleep(3)
 
 
 screenshot = pyautogui.screenshot()
-screenshot.save(f"screenshot{cpf}_{year}.png")
+screenshot.save(f"{cpf}_{year}.png")
 pyautogui.hotkey('ctrl', 'w')
 time.sleep(65)
 
